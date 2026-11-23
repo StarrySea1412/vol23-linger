@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="color-scheme" content="light"/>
+<meta name="theme-color" content="#f7f4ec"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23faf7f0'/%3E%3Cpath d='M5 7.5h5.4v9H5zM13.6 7.5H19v9h-5.4z' fill='none' stroke='%232c4a7c' stroke-width='2'/%3E%3Ccircle cx='5' cy='12' r='2.4' fill='%232c4a7c'/%3E%3Ccircle cx='19' cy='12' r='2.4' fill='%23b5651d'/%3E%3Cpath d='M8.2 12h7.2' stroke='%232c4a7c' stroke-width='2' stroke-dasharray='2 2'/%3E%3C/svg%3E"/>
+<meta name="description" content="别人家的造物：Linger 是怎么把 Agent 搬回本机的 —— 12G 显卡、39GB 模型、八小时首 token，以及一套被工程化过的本地优先设计。造物手记 VOL.23。"/>
+<meta name="author" content="StarrySea1412"/>
+<meta property="og:title" content="别人家的造物：Linger · 造物手记 VOL.23"/>
+<meta property="og:description" content="12G 显卡、39GB 模型、八小时首 token：一台叫 Linger 的本地 Agent 的解剖，以及它的二十九个工程决定。"/>
+<meta property="og:type" content="article"/>
+<title>别人家的造物：Linger · 造物手记 VOL.23</title>
+<style>
+@font-face{font-family:"LXGW WenKai";src:url("assets/wenkai-medium.woff2") format("woff2");font-weight:600 900;font-style:normal;font-display:swap}
+:root{
+  --paper:#f7f4ec;--surface:#fffcf4;--ink:#23282a;--muted:#6a7168;--line:#dfd9c9;
+  --blue:#2c4a7c;--blue-soft:#e4ebf2;--amber:#a95f16;--amber-soft:#f6e6d2;
+  --serif:"LXGW WenKai","Songti SC","STSong","Noto Serif CJK SC",serif;
+  --sans:"LXGW WenKai",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:28px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.85;-webkit-font-smoothing:antialiased}
+::selection{background:#d3e0ef}
+a{color:var(--blue);text-underline-offset:4px}
+a:hover{color:var(--amber)}
+button{font:inherit;color:inherit;cursor:pointer}
+p{margin:0 0 1.25em}
+h1,h2,h3,h4{line-height:1.45;text-wrap:balance}
+h1,h2,h3{font-family:var(--serif)}
+h2,h3{margin:0}
+strong{font-weight:700}
+code{font-family:var(--mono);font-size:.88em;background:var(--blue-soft);padding:.12em .32em;border-radius:3px;overflow-wrap:anywhere}
+.wrap{max-width:1160px;margin:auto;padding-inline:36px}
+/* progress */
+.progress{position:fixed;inset:0 auto auto 0;height:3px;width:100%;background:var(--amber);transform:scaleX(0);transform-origin:left;z-index:30;pointer-events:none}
+/* masthead */
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-block:26px 20px;border-bottom:1px solid var(--ink);font-size:12px;letter-spacing:.12em}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.brand-mark{width:22px;height:22px;display:block}
+.brand-mark svg{width:100%;height:100%;display:block}
+.edition{color:var(--muted);font-family:var(--mono);letter-spacing:.05em;font-size:11px}
+/* hero */
+.hero{padding-block:64px 48px;display:grid;grid-template-columns:1.2fr .8fr;gap:48px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.08em;color:var(--muted);margin:0 0 26px;background:var(--surface);border:1px solid var(--line);padding:6px 14px 6px 10px;border-radius:100px}
+.eyebrow span{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.14em;font-weight:700;padding-right:10px;border-right:1px solid var(--line)}
+.eyebrow strong{font-weight:600;color:var(--ink)}
+.hero h1{font-size:clamp(44px,5.2vw,70px);font-weight:800;line-height:1.12;letter-spacing:-.04em;margin:0 0 26px}
+.hero h1 em{display:block;color:var(--blue);font-style:normal;margin-top:4px}
+.hero h1 em .scrib{display:block;width:170px;height:12px;margin-top:5px}
+.dek-wrap{margin:0 0 30px;max-width:560px;border-left:3px solid var(--blue);padding-left:20px}
+.dek-tag{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.05em;margin:0 0 10px}
+.dek{font-size:15.5px;line-height:1.9;color:#4c5a61;margin:0}
+.hero-meta{display:flex;gap:8px;flex-wrap:wrap}
+.hero-meta .pill{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:6px 14px;border-radius:6px;font-family:var(--mono);letter-spacing:.03em}
+.hero-meta .pill b{color:var(--amber)}
+/* hero art */
+.art{margin:0}
+.art-button{display:block;position:relative;width:100%;border:1px solid #dcd6c4;padding:0;background:#fffdf2;box-shadow:6px 8px 0 #d8cdb22e;transition:transform .2s}
+.art-button:hover{transform:translateY(-3px)}
+.art-button svg{display:block;width:100%;height:auto}
+.art figcaption{font-size:11px;line-height:1.8;color:var(--muted);margin-top:14px}
+.art figcaption b{color:var(--blue);font-weight:700;margin-right:8px}
+.art figcaption small{display:block;font:inherit;margin-top:4px}
+/* opening */
+.opening{max-width:740px;margin:50px auto 0;font-size:16.5px}
+.opening .lead{font-family:var(--serif);font-size:22px;line-height:1.8;color:var(--blue)}
+.scope{font-size:12px!important;color:var(--muted);border-left:2px solid var(--line);padding-left:17px}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:40px 0 0;padding-top:22px;border-top:1px dashed var(--line)}
+.toc a{display:inline-flex;align-items:baseline;gap:7px;font-size:12.5px;color:var(--muted);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:7px 13px;border-radius:100px}
+.toc a b{font-family:var(--mono);font-weight:700;font-size:10.5px;color:var(--amber)}
+.toc a:hover{color:var(--blue);border-color:#b9cbbb}
+/* chapters */
+.chapter{margin-top:80px;padding-top:42px;border-top:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='8' viewBox='0 0 160 8'%3E%3Cpath d='M2 4.5 C 22 1.8, 42 7, 62 4.5 S 102 1.8, 122 4.5 S 152 7, 158 4.5' fill='none' stroke='%2322262b' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:repeat-x;background-position:top left;background-size:160px 8px}
+.chapter-head{display:grid;grid-template-columns:104px 1fr;gap:22px;margin-bottom:38px;align-items:start}
+.chapter-no{font-family:var(--serif);font-size:70px;font-weight:400;color:#c9c3ae;line-height:1;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+.chapter-no .ch-ic{width:44px;height:44px;flex:none}
+.chapter-label{font-family:var(--mono);letter-spacing:.16em;font-size:10px;color:var(--amber);margin-bottom:9px;font-weight:700}
+.chapter-head h2{font-size:34px;letter-spacing:-.02em}
+.chapter-head p{font-size:14.5px;color:var(--muted);margin:12px 0 0;max-width:700px}
+.chapter-stamp{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--amber);border:1px solid currentColor;padding:3px 8px;transform:rotate(-2deg)}
+.reading{max-width:740px;margin-inline:auto;font-size:16px}
+.reading>h3{font-size:22px;margin:36px 0 16px}
+.reading>h4{font-size:16.5px;margin:26px 0 12px}
+.note{font-size:13px;line-height:1.85;border-left:3px solid var(--blue);padding:13px 18px;background:var(--blue-soft);margin:24px 0}
+.note p:last-child{margin-bottom:0}
+.note small{display:block;color:var(--muted);margin-top:6px}
+/* data table */
+.table-wrap{overflow-x:auto;margin:26px 0;border-block:1px solid var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:13px;line-height:1.8;min-width:560px;text-align:left}
+th{font-weight:700;color:var(--blue);padding:12px 14px;background:var(--blue-soft);white-space:nowrap;font-size:12.5px}
+td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600}
+td.num{font-family:var(--mono);font-size:12px;white-space:nowrap}
+caption{text-align:left;padding:12px 0;font-size:12px;color:var(--muted)}
+/* figure blocks */
+.fig{margin:30px 0;border:1px solid var(--line);background:var(--surface);padding:22px 24px 18px}
+.fig-head{display:flex;justify-content:space-between;align-items:baseline;gap:14px;border-bottom:1px dashed #b9b09a;padding-bottom:11px;margin-bottom:16px}
+.fig-head h4{margin:0;font-size:15px;letter-spacing:-.01em}
+.fig-head .diagram-label{white-space:nowrap}
+.diagram-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.fig-note{font-size:11.5px;line-height:1.8;color:var(--muted);margin:12px 0 0}
+/* lab */
+.lab{max-width:780px;margin:30px auto 0;background:#1c2530;border:1px solid #2b3a4a;border-radius:14px;padding:20px 22px 16px;color:#e7e5dd}
+.lab .lab-tag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:#d9a05b;margin:0 0 14px;text-align:center}
+.lab-stage{background:#232e3a;border:1px solid #33455a;border-radius:10px;padding:16px}
+.lab-ctrl{display:flex;flex-wrap:wrap;gap:12px 18px;justify-content:center;align-items:center;font-size:12px;color:#9fb0c0;margin-top:14px}
+.lab-btn{font-family:var(--serif);font-size:13px;letter-spacing:.06em;color:#dfe6ee;background:none;border:1px solid #4a6076;border-radius:100px;padding:6px 16px;transition:background .2s,color .2s,border-color .2s}
+.lab-btn:hover{background:#2c3b4b}
+.lab-btn.on{background:#d9a05b;color:#1c2530;border-color:#d9a05b;font-weight:700}
+.lab-btn:disabled{opacity:.4;cursor:default}
+.lab-cap{font-family:var(--mono);font-size:11px;color:#8fa3b4;text-align:center;margin:10px 0 0;min-height:16px}
+.lab-cap b{color:#e0b06a}
+/* staged lab: expert tiers */
+.tier{width:100%}
+.tier-card{border:1px solid #33455a;border-radius:8px;padding:9px 13px;margin-bottom:8px;background:#2a3746;display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:center;font-size:12px;transition:background .3s,border-color .3s}
+.tier-card .tier-name{font-family:var(--mono);font-size:11px;color:#9fb0c0;letter-spacing:.04em}
+.tier-card .tier-body{color:#dfe6ee;font-size:12px}
+.tier-card .tier-body i{font-style:normal;color:#8fa3b4}
+.tier-card .tier-hot{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:999px;background:#33455a;color:#9fb0c0;white-space:nowrap}
+.tier-card.hit{border-color:#c9944a;box-shadow:0 0 0 1px #c9944a inset}
+.tier-card.hit .tier-hot{background:#c9944a;color:#1c2530;font-weight:700}
+.tier-card.miss{border-color:#3a4d63;opacity:.62}
+.tier-card.miss .tier-hot{background:#2a3746;color:#7f92a4}
+.tier-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:11px;font-family:var(--mono);color:#8fa3b4}
+.tier-legend span{display:inline-flex;align-items:center;gap:6px}
+.tier-legend b{width:8px;height:8px;border-radius:2px;display:inline-block}
+.tier-num{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px dashed #33455a;font-family:var(--mono);font-size:11.5px;color:#c8d2dc}
+.lab2-log{margin-top:12px;padding-top:10px;border-top:1px dashed #33455a;font-size:11px;color:#9fb0c0;line-height:1.75;min-height:20px}
+.lab2-log .logline{margin:3px 0;padding-left:10px;border-left:2px solid #c9944a}
+.lab2-log .logline.dim{color:#6f8496;border-left-color:#33455a}
+.tier-num b{color:#e0b06a}
+/* lab: supply chain bars */
+.chain{display:flex;flex-direction:column;gap:6px}
+.chain-row{display:grid;grid-template-columns:1fr 54px 132px;gap:10px;align-items:center;font-size:12px}
+.chain-row .cl{color:#cfd8e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chain-row .cbar{height:9px;border-radius:3px;background:#33455a;overflow:hidden}
+.chain-row .cbar i{display:block;height:100%;width:0;background:#7f9bbd;transition:width .3s}
+.chain-row .cnum{font-family:var(--mono);font-size:10.5px;text-align:right;color:#8fa3b4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chain-row.local .cbar i{background:#7fae8e}
+.chain-row.foreign .cbar i{background:#c9944a}
+.chain-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:11px;border-top:1px dashed #33455a;font-family:var(--mono);font-size:10.5px;color:#8fa3b4}
+.chain-legend span{display:inline-flex;align-items:center;gap:6px}
+.chain-legend b{width:8px;height:8px;border-radius:2px;display:inline-block}
+/* comparison two-col */
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:24px 0}
+.dual>div{border:1px solid var(--line);background:var(--surface);padding:16px 18px}
+.dual h4{margin:0 0 10px;font-size:15px;color:var(--blue)}
+.dual ul{margin:0;padding-left:18px;font-size:13px;color:#4c5a61;line-height:1.85}
+.dual li{margin:4px 0}
+/* decision list */
+.dec-list{margin:22px 0;border:1px solid var(--line);background:var(--surface)}
+.dec{display:grid;grid-template-columns:52px 1fr;gap:14px;padding:14px 18px;border-top:1px solid var(--line);font-size:13.5px;line-height:1.8}
+.dec:first-child{border-top:0}
+.dec .dn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--amber);letter-spacing:.06em;padding-top:3px}
+.dec b{color:var(--ink)}
+.dec span{color:#4c5a61}
+/* ending */
+.ending{margin-top:86px;padding-top:38px;border-top:1px solid var(--ink);max-width:740px;margin-inline:auto}
+.ending h2{font-size:30px;margin-bottom:18px}
+.ending .reading{font-size:16px}
+.ending .reading p{margin-bottom:1.1em}
+.quickcard{margin:30px 0;background:var(--ink);color:#efece2;padding:24px 26px}
+.quickcard .diagram-label{color:#a8a294;margin-bottom:12px}
+.quickcard ul{margin:0;padding-left:18px}
+.quickcard li{font-size:13px;margin:6px 0;line-height:1.8}
+.quickcard li::marker{color:var(--amber)}
+.quickcard code{background:#3a4048;color:#e6e2d6}
+.source-note{font-size:11.5px;line-height:1.85;color:var(--muted);border-top:1px dashed var(--line);padding-top:16px;margin-top:26px}
+/* series nav */
+.series-nav{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:baseline;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted);margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--line)}
+.series-nav a{color:inherit;text-decoration:none}
+.series-nav a:hover{text-decoration:underline}
+.series-nav a.hub{color:var(--amber);font-weight:700}
+/* footer */
+.site-foot{margin-top:56px;border-top:1px solid var(--line);padding:24px 0 44px;display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.site-foot .foot-meta{font-family:var(--mono);letter-spacing:.04em}
+/* responsive */
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;gap:34px}
+  .art{max-width:440px;margin-inline:auto}
+  .chapter-head{grid-template-columns:1fr;gap:14px}
+  .chapter-no{font-size:54px;flex-direction:row;align-items:center}
+  .dual{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media print{
+  .progress,.series-nav{display:none}
+  body{background:#fff}
+  .lab{background:#1c2530!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<header class="wrap masthead">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3.2" y="6.6" width="6" height="10.8" rx="1.6" stroke="#2c4a7c" stroke-width="2"/><rect x="14.8" y="6.6" width="6" height="10.8" rx="1.6" stroke="#a95f16" stroke-width="2"/><path d="M9.6 12h5" stroke="#2c4a7c" stroke-width="2" stroke-dasharray="2 2"/></svg></span>STARRYSEA · 造物手记</div>
+  <div class="edition">FIELD NOTES · VOL.23 · 2026.11</div>
+</header>
+
+<div class="wrap">
+<section class="hero">
+  <div>
+    <p class="eyebrow"><span>VOL.23</span><strong>别人家的造物 · 一篇读别人代码的手记</strong></p>
+    <h1>别人家的造物：<em>Linger<svg class="scrib" viewBox="0 0 170 12" preserveAspectRatio="none" aria-hidden="true"><path d="M3 8 C 30 3, 58 11, 88 6 S 140 3, 167 7" fill="none" stroke="#a95f16" stroke-width="3.6" stroke-linecap="round"/></svg></em></h1>
+    <div class="dek-wrap">
+      <p class="dek-tag">dek / 摘要</p>
+      <p class="dek">一台开源的本地个人 Agent：12G 显卡上跑 125B 模型、一份每晚自己重写的记忆 wiki、一个会在你睡觉时复盘自己该不该开口的「另一个我」。这二十天它涨了四千颗星，也把一个老问题重新摆上桌面——当算力回到你自己的机器上，一个 agent 产品到底该怎么设计。</p>
+    </div>
+    <div class="hero-meta">
+      <span class="pill"><b>约 25</b> 分钟</span>
+      <span class="pill"><b>6</b> 章 · <b>2</b> 枚小样</span>
+      <span class="pill">读的是 <b>4,028</b>★ 的真实仓库</span>
+      <span class="pill">更新于 2026.11.23</span>
+    </div>
+  </div>
+  <figure class="art">
+    <button class="art-button" type="button" aria-label="放大查看插图">
+      <svg viewBox="0 0 480 470" role="img" aria-label="手绘：12G 的显存格子里坐着几个专家，其余专家排在被内存和硬盘接住的仓库里">
+        <rect width="480" height="470" fill="#fffdf2"/>
+        <!-- GPU box -->
+        <rect x="46" y="52" width="210" height="150" rx="8" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="2.4"/>
+        <text x="60" y="76" font-family="Consolas,monospace" font-size="11" fill="#2c4a7c" letter-spacing="1.5">GPU · 12 GB</text>
+        <g fill="#2c4a7c">
+          <rect x="62" y="88" width="52" height="48" rx="4"/>
+          <rect x="122" y="88" width="52" height="48" rx="4" opacity=".78"/>
+          <rect x="182" y="88" width="52" height="48" rx="4" opacity=".55"/>
+          <rect x="62" y="144" width="52" height="48" rx="4" opacity=".68"/>
+          <rect x="122" y="144" width="52" height="48" rx="4" opacity=".4"/>
+          <rect x="182" y="144" width="52" height="48" rx="4" opacity=".3"/>
+        </g>
+        <text x="62" y="224" font-family="Consolas,monospace" font-size="10.5" fill="#6a7168">busiest experts · hot</text>
+        <!-- RAM box -->
+        <rect x="46" y="244" width="210" height="92" rx="8" fill="#f6e6d2" stroke="#a95f16" stroke-width="2.2"/>
+        <text x="60" y="266" font-family="Consolas,monospace" font-size="11" fill="#a95f16" letter-spacing="1.5">RAM · 64 GB</text>
+        <g fill="#c98a3c" opacity=".7">
+          <rect x="62" y="278" width="40" height="30" rx="3"/>
+          <rect x="108" y="278" width="40" height="30" rx="3" opacity=".8"/>
+          <rect x="154" y="278" width="40" height="30" rx="3" opacity=".55"/>
+          <rect x="200" y="278" width="40" height="30" rx="3" opacity=".4"/>
+        </g>
+        <text x="62" y="326" font-family="Consolas,monospace" font-size="10.5" fill="#8a6a3a">warm · moves up when picked</text>
+        <!-- SSD box -->
+        <rect x="46" y="356" width="210" height="76" rx="8" fill="#eef0f1" stroke="#8a959c" stroke-width="2"/>
+        <text x="60" y="378" font-family="Consolas,monospace" font-size="11" fill="#6a7168" letter-spacing="1.5">SSD · rest</text>
+        <text x="62" y="400" font-family="Consolas,monospace" font-size="10.5" fill="#8a959c">cold · read into RAM</text>
+        <!-- wire -->
+        <path d="M262 127 C 330 127, 330 290, 396 290" fill="none" stroke="#a95f16" stroke-width="2.2" stroke-dasharray="5 5"/>
+        <path d="M262 290 C 310 290, 330 300, 396 300" fill="none" stroke="#8a959c" stroke-width="1.8" stroke-dasharray="4 4"/>
+        <circle cx="400" cy="290" r="6" fill="#a95f16"/>
+        <text x="300" y="112" font-family="Consolas,monospace" font-size="10.5" fill="#6a7168" transform="rotate(-90 300 112)">one token · a few experts</text>
+        <!-- token -->
+        <rect x="336" y="350" width="132" height="76" rx="8" fill="#fffdf2" stroke="#b8b3a4" stroke-width="1.6"/>
+        <text x="350" y="370" font-family="Consolas,monospace" font-size="10" fill="#6a7168">this token</text>
+        <text x="350" y="390" font-family="Consolas,monospace" font-size="12" fill="#2c4a7c">45.5 tok/s</text>
+        <rect x="350" y="400" width="42" height="13" rx="2.5" fill="#f3ece0" stroke="#c9b79a" stroke-width="1"/>
+        <text x="354" y="410" font-family="Consolas,monospace" font-size="8" fill="#8a6a3a" letter-spacing="0.5">自述</text>
+      </svg>
+    </button>
+    <figcaption><b>图 0</b>125B 的模型，被拆成三层放在你自己的机器上。<small>示意图 · 非等比，非实测截图；tok/s 为该项目自述</small></figcaption>
+  </figure>
+</section>
+</div>
+
+<div class="wrap">
+<div class="opening">
+  <p class="lead">先交代动机：这个系列写到现在，我拆的都是自己的东西——我自己的记忆系统、我自己的沙箱、我自己的驾驶舱。自己写的东西有个毛病，你会不自觉地替它辩护。所以这一篇换个打法：<strong>拆一台别人的机器</strong>，尽量只用它自己写下来的话，和仓库里能点开看的东西。</p>
+  <p>挑中的是 <code>simplexai-labs/linger</code>。原因很实在：它想干的事，恰好是我这两年反复在干的事（本地优先、agent 工作台、可回滚的工具执行、长期记忆），但走了一条我完全没有走过的路——把大模型本身塞回本地，然后围绕这件事重新设计产品。看别人怎么解同一道题，比自己再写一遍更能看出自己漏了什么。</p>
+  <p class="scope">全文的事实来源只有三处：仓库 README、`docs/` 下的九篇设计文档、以及 LICENSE 与 release note。文中所有数字都是它们自己写的，我没有复现、没有实机跑过、也不替它们背书；凡是它们标了「模拟测试」的地方，我照抄那个限定词。凡是我自己的判断，都会写成「我认为」。</p>
+  <nav class="toc" aria-label="章节索引">
+    <a href="#ch1"><b>01</b>一台机器，两种极端</a>
+    <a href="#ch2"><b>02</b>12G 上跑 125B</a>
+    <a href="#ch3"><b>03</b>挑模型：五层筛子</a>
+    <a href="#ch4"><b>04</b>会自己改写的记忆</a>
+    <a href="#ch5"><b>05</b>凌晨复盘的规则</a>
+    <a href="#ch6"><b>06</b>壳与笼子</a>
+    <a href="#ch7"><b>07</b>账单不是零</a>
+    <a href="#ch8"><b>08</b>别人的工程清单</a>
+  </nav>
+</div>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch1">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="6" y="10" width="14" height="28" rx="3" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="2.2"/><rect x="28" y="10" width="14" height="28" rx="3" fill="#f6e6d2" stroke="#a95f16" stroke-width="2.2"/><path d="M20 24h8" stroke="#6a7168" stroke-width="2" stroke-dasharray="3 3"/></svg><span>01</span></div>
+    <div>
+      <p class="chapter-label">TWO EXTREMES</p>
+      <h2>一台机器，两种极端</h2>
+      <p>Linger 把自己定义成"跑在你自己 PC 上的开源个人 agent"。它同时踩在两个极端上：一个是今天消费级硬件的物理上限，一个是 agent 产品最容易被忽略的那部分——记忆与主动性。</p>
+      <span class="chapter-stamp">拆解 · 01</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p>仓库 11 月 10 日建，13 天后四千星。它自己的 README 第一句写得很直白：<em>"Linger is an open-source personal agent with a Claude-class brain running locally on your PC."</em>（一台跑在你 PC 上、装着 Claude 级大脑的开源个人 agent。）副标题三个词：Open-Source、Local AI、Consumer Macs &amp; PCs。</p>
+    <p>它的技术栈在 GitHub 上分成两大块：TypeScript 2,200 万字节、Go 1,500 万字节。翻一遍顶层目录就能看出这不是一个 demo 的规模：</p>
+
+    <div class="table-wrap">
+      <table>
+        <caption>表 0 · 顶层目录（取自仓库 main 分支根目录）</caption>
+        <thead><tr><th>目录</th><th>里面是什么</th><th>我的读法</th></tr></thead>
+        <tbody>
+          <tr><td><code>apps/</code></td><td>desktop、web、computer、teamhub、teamhub-cli、node-services、voice-runtime、linger-installer</td><td>八个可执行程序，桌面端 / 服务端 / 本机守护进程 / 语音 / 安装器全部拆开</td></tr>
+          <tr><td><code>packages/</code></td><td>document-files、document-model、knowledge-format、local-installation、service-kit</td><td>文档与知识格式被抽成独立包，说明「文档」和「wiki」是一等公民</td></tr>
+          <tr><td><code>contracts/</code></td><td>OpenAPI + 生成出来的 Go 与 TypeScript 代码</td><td>接口先定契约再生成代码，前后端共用一份定义</td></tr>
+          <tr><td><code>skills/</code></td><td>内置技能</td><td>agent 的技能不是散落在 prompt 里，而是有目录</td></tr>
+          <tr><td><code>docs/</code></td><td>九篇设计文档</td><td>本篇主要证据来源，后面每章都会引</td></tr>
+          <tr><td><code>e2e/</code></td><td>端到端测试</td><td>有 e2e，说明它把「桌面 + 本机进程」当成要测的东西</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>而它真正想解决的问题，用一句话说就是：<strong>让"有个 AI 助理替我盯着事"这件事，不再需要订阅一个云端服务。</strong>传统做法是你把收件箱、日历、聊天记录交给某家公司的服务器，然后按 token 或按月付钱；Linger 反过来，让这些东西留在你的硬盘上，模型也在你的机器上算。</p>
+
+    <p>所以这台机器有两个极端：一头是硬件——要在 12GB 显存的笔记本上跑 125B 参数的模型；另一头是产品——一个会自己开口说话的 agent，它得知道什么时候该说、什么时候该闭嘴。这两头都不容易，而它偏偏把两头顶在了一起。</p>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch2">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="6" y="14" width="22" height="20" rx="3" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="2.2"/><path d="M28 24h6M34 24v-8h6M34 24v8h6" stroke="#a95f16" stroke-width="2.2" stroke-linecap="round"/><circle cx="41" cy="15" r="2.4" fill="#a95f16"/><circle cx="41" cy="33" r="2.4" fill="#a95f16"/></svg><span>02</span></div>
+    <div>
+      <p class="chapter-label">MOE OFFLOAD</p>
+      <h2>12G 上跑 125B：拆开「显存不够」这四个字</h2>
+      <p>这一章是整台机器的地基。也是我最想拆的一段——因为它把一个"不可能"拆成了一道可以算的账。</p>
+      <span class="chapter-stamp">拆解 · 02</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p>先看它自己给的数字：Qwen3.8-Flash-Next，1250 亿参数，2-bit 量化后文件 <strong>39 GB</strong>。而它宣称的目标机器是 <strong>12 GB 显存 + 64 GB 内存</strong>。39 &gt; 12，这是第一直觉上的矛盾。传统做法是"把整个模型装进显存"，装不下就只能换更小的模型——这正是本地 agent 一直做不起来的原因之一：模型一小，能力就掉下来了。</p>
+
+    <div class="fig">
+      <div class="fig-head"><h4>图 1 · 显存不够时的两种放法</h4><span class="diagram-label">A / B COMPARISON</span></div>
+      <svg viewBox="0 0 720 232" role="img" aria-label="左边：39GB 模型塞进 12GB 卡，27GB 无处安放；右边：常用的专家留在 12GB 卡，其余放在内存和硬盘">
+        <g>
+          <text x="0" y="13" font-family="Consolas,monospace" font-size="10.5" fill="#6a7168">A · 常规做法：整个模型必须在卡里</text>
+          <rect x="0" y="24" width="330" height="120" rx="6" fill="#fffdf2" stroke="#b8b3a4" stroke-width="1.6" stroke-dasharray="5 4"/>
+          <text x="12" y="42" font-family="Consolas,monospace" font-size="10.5" fill="#8a959c">12 GB GPU</text>
+          <rect x="0" y="52" width="132" height="92" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="1.8"/>
+          <text x="14" y="72" font-family="Consolas,monospace" font-size="10.5" fill="#2c4a7c">12 GB 装进去了</text>
+          <rect x="132" y="52" width="198" height="92" fill="#f3ece0" stroke="#a95f16" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <text x="146" y="72" font-family="Consolas,monospace" font-size="10.5" fill="#a95f16">27 GB 无处安放</text>
+          <text x="146" y="92" font-family="Consolas,monospace" font-size="10" fill="#b08a55">→ 需要 39 GB 以上显存</text>
+          <text x="146" y="110" font-family="Consolas,monospace" font-size="10" fill="#b08a55">→ 比 RTX 5090 还多</text>
+          <text x="0" y="168" font-family="Consolas,monospace" font-size="10.5" fill="#9aa0a6">结论：这台机器跑不动。</text>
+        </g>
+        <g transform="translate(390 0)">
+          <text x="0" y="13" font-family="Consolas,monospace" font-size="10.5" fill="#6a7168">B · PolyStrata：按 token 现取现用</text>
+          <rect x="0" y="24" width="300" height="96" rx="6" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="1.8"/>
+          <text x="12" y="42" font-family="Consolas,monospace" font-size="10.5" fill="#2c4a7c">GPU 12 GB · 常驻最热专家</text>
+          <g fill="#2c4a7c" opacity=".85">
+            <rect x="14" y="52" width="56" height="24" rx="3"/>
+            <rect x="76" y="52" width="56" height="24" rx="3" opacity=".8"/>
+            <rect x="138" y="52" width="56" height="24" rx="3" opacity=".65"/>
+            <rect x="200" y="52" width="56" height="24" rx="3" opacity=".5"/>
+            <rect x="14" y="82" width="56" height="24" rx="3" opacity=".7"/>
+            <rect x="76" y="82" width="56" height="24" rx="3" opacity=".5"/>
+            <rect x="138" y="82" width="56" height="24" rx="3" opacity=".4"/>
+          </g>
+          <rect x="0" y="130" width="300" height="62" rx="6" fill="#f6e6d2" stroke="#a95f16" stroke-width="1.8"/>
+          <text x="12" y="148" font-family="Consolas,monospace" font-size="10.5" fill="#a95f16">RAM 64 GB · 温专家</text>
+          <text x="12" y="164" font-family="Consolas,monospace" font-size="10" fill="#8a6a3a">被选中就升上来</text>
+          <text x="0" y="216" font-family="Consolas,monospace" font-size="10.5" fill="#8a959c">SSD · 冷专家，按需读入</text>
+        </g>
+      </svg>
+      <p class="fig-note">MoE 的关键是：每个 token 只激活全部专家中的少数几个。所以不需要"全部装下"，只需要"装下最可能被选中的那些"。上图右侧的容量与速度数字取自仓库 README 与 <code>docs/local-inference.md</code> 中标注的测试条件；README 同时说明 12GB 档位为模拟测试（用大卡锁显存预算），不是真实 12GB 卡实测。</p>
+    </div>
+
+    <h3>这套东西叫 PolyStrata</h3>
+    <p>推理引擎单独开源在 <code>simplexai-labs/PolyStrata</code>，C++ 写的，MIT 许可。它的逻辑描述得很朴素：MoE 每生成一个 token 只会用到少数专家，那么就把最常被用到的专家留在 GPU，其次的放在系统内存，Mac 内存不够就落到 SSD，中间按需换入换出。用在硬盘上时还会"预读下一层"。</p>
+    <p>它公布的成绩是：<strong>12 GB RTX 3060 上 45.5 tokens/s</strong>；8 GB 笔记本 4070 上 38.1；32 GB 的 5090 上 179。这三档我都照抄了它的限定——前两个数字是模拟档位测的。</p>
+
+    <div class="note">
+      <p><strong>我认为这里最值得学的不是"快"，是"分层"这个动作本身。</strong></p>
+      <p>把"资源不够"从一道是非题，变成了一道"哪些放近、哪些放远"的排序题。这个思路在别的场景一样成立：上下文不够时，哪些事实常驻、哪些落盘；工具太多时，哪些常驻提示词、哪些按需加载。资源永远不够，区别只在于你有没有把它当成排序问题来做。</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch3">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M8 12h32M8 20h32M8 28h32M8 36h32" stroke="#b8b3a4" stroke-width="2"/><path d="M14 12v24M24 12v24M34 12v24" stroke="#dfd9c9" stroke-width="1.4"/><rect x="22" y="24" width="4" height="4" fill="#a95f16"/></svg><span>03</span></div>
+    <div>
+      <p class="chapter-label">PLANNING</p>
+      <h2>挑模型：一台自动往下筛的五层筛子</h2>
+      <p>"帮我装个模型"听起来是一步，实际是五个决策的组合：哪个模型、哪个量化档、多长上下文、KV 用几位精度、剩下的内存塞什么。</p>
+      <span class="chapter-stamp">拆解 · 03</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p><code>docs/local-inference.md</code> 里把这件事叫 <em>Planning</em>：硬件和模型设置一起选，逐层筛，每一层都收窄一次范围，最后剩一个模型、一个量化、一个上下文长度、一个 KV 精度；小模型再往剩下的空里塞。它给了五层：</p>
+
+    <div class="steps" style="display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);margin:26px 0">
+      <div style="padding:18px 14px;background:var(--surface)">
+        <p style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 8px">LAYER 1</p>
+        <b style="font-size:14px">平台</b>
+        <p style="font-size:12.5px;color:#4c5a61;margin:8px 0 0">Mac / NVIDIA / 其他，决定能用哪套推理路径</p>
+      </div>
+      <div style="padding:18px 14px;background:var(--surface);border-left:1px solid var(--line)">
+        <p style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 8px">LAYER 2</p>
+        <b style="font-size:14px">空闲内存</b>
+        <p style="font-size:12.5px;color:#4c5a61;margin:8px 0 0">算出语言模型能分到多少，剩下的留给系统</p>
+      </div>
+      <div style="padding:18px 14px;background:var(--surface);border-left:1px solid var(--line)">
+        <p style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 8px">LAYER 3</p>
+        <b style="font-size:14px">装得下</b>
+        <p style="font-size:12.5px;color:#4c5a61">权重 + 共享的 128K KV 池都要能放进内存</p>
+      </div>
+      <div style="padding:18px 14px;background:var(--surface);border-left:1px solid var(--line)">
+        <p style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 8px">LAYER 4</p>
+        <b style="font-size:14px">质量优先</b>
+        <p style="font-size:12.5px;color:#4c5a61">剩下同样装得下的里面，先挑更聪明的</p>
+      </div>
+      <div style="padding:18px 14px;background:var(--surface);border-left:1px solid var(--line)">
+        <p style="font-family:var(--mono);font-size:10px;color:var(--amber);margin:0 0 8px">LAYER 5</p>
+        <b style="font-size:14px">塞满剩余</b>
+        <p style="font-size:12.5px;color:#4c5a61">小模型（决策模型、辅助模型）填进剩下的空间</p>
+      </div>
+    </div>
+
+    <p>这里有个容易看漏、但我认为很硬的约束：<strong>装完不算装好，要回答一个真实问题才算。</strong>安装流程里模型是在通过一次真实问答之后才被标记为已安装的。</p>
+    <p>还有一件事它做了：<strong>目录是量出来的，不是抄参数表。</strong>它说自己在实验室里跑了 49 个语言模型 × 2 个推理引擎 × IQ1_M 到 Q8_0 的多档量化 × 64K 到 256K 上下文，在 NVIDIA 8–96 GB 和 Mac 16–128 GB 上逐档测。这些数字最终变成安装时给你推荐的那一行。</p>
+
+    <h3>顺手定了一把尺子</h3>
+    <p>为了回答"这台机器到底能装到多聪明"，它自己定了一个 <strong>SimplexAI 评分</strong>：38% 编码、19% 研究、19% 专业工作、14% 知识、10% 人类偏好，再扣掉压缩带来的损失。然后它把这个分数放到一个第三方刻度（AIHOT，50 为平均线）上，于是就能写出"12G 档 ≈ Claude Opus 4.6"这样的话。</p>
+    <p>我对这把尺子的态度是双重的：一方面，给一个混乱的本地模型生态定可比的刻度，这件事本身有价值；另一方面，评分权重是自己定的、刻度是自己贴的，"≈ Opus" 这种类比有多少可信度，取决于你怎么看它的方法论透明度。它至少把权重摊开写了，这比大多数"我们的模型很强"诚实。</p>
+
+    <div class="fig">
+      <div class="fig-head"><h4>图 2 · 一张自制的尺子，怎么贴到别人的刻度上</h4><span class="diagram-label">SCORING</span></div>
+      <svg viewBox="0 0 720 150" role="img" aria-label="一条横轴，左边是本机档位，右边是云端模型，中间用分数连线">
+        <line x1="20" y1="70" x2="700" y2="70" stroke="#b8b3a4" stroke-width="1.6"/>
+        <g font-family="Consolas,monospace" font-size="10.5">
+          <line x1="20" y1="64" x2="20" y2="76" stroke="#b8b3a4" stroke-width="1.6"/>
+          <text x="20" y="96" fill="#8a959c">25</text>
+          <line x1="170" y1="64" x2="170" y2="76" stroke="#b8b3a4" stroke-width="1.6"/>
+          <text x="170" y="96" fill="#8a959c">35</text>
+          <line x1="330" y1="64" x2="330" y2="76" stroke="#b8b3a4" stroke-width="1.6"/>
+          <text x="330" y="96" fill="#8a959c">50</text>
+          <line x1="490" y1="64" x2="490" y2="76" stroke="#b8b3a4" stroke-width="1.6"/>
+          <text x="490" y="96" fill="#8a959c">65</text>
+          <line x1="680" y1="64" x2="680" y2="76" stroke="#b8b3a4" stroke-width="1.6"/>
+          <text x="680" y="96" fill="#8a959c">80</text>
+          <text x="20" y="122" fill="#6a7168">日常帮手</text>
+          <text x="160" y="122" fill="#6a7168">能干活的助手</text>
+          <text x="290" y="122" fill="#6a7168">前沿级</text>
+          <text x="450" y="122" fill="#6a7168">尖端</text>
+          <text x="20" y="34" fill="#2c4a7c">本地：Mac 24G → 51.9 · 32G → 54.0 · 12G RTX → 57.3</text>
+          <text x="20" y="52" fill="#a95f16">云端：Gemini 2.5 Pro 34.9 · Sonnet 4.6 53.6 · Opus 4.6 58.7 · GPT-5.5 62.7</text>
+        </g>
+        <circle cx="240" cy="70" r="4" fill="#2c4a7c"/>
+        <circle cx="263" cy="70" r="4" fill="#2c4a7c"/>
+        <circle cx="300" cy="70" r="4" fill="#2c4a7c"/>
+        <circle cx="390" cy="70" r="4" fill="#a95f16"/>
+        <circle cx="430" cy="70" r="4" fill="#a95f16"/>
+        <circle cx="470" cy="70" r="4" fill="#a95f16"/>
+      </svg>
+      <p class="fig-note">分数取自仓库 README 中的 public-tiers 表，刻度为第三方 AIHOT（50 = 参考平均，3 分以内视为同一档）。我没有验证 AIHOT 的评测方法。</p>
+    </div>
+
+    <div class="lab">
+      <p class="lab-tag">小样 1 · EXPERT PLACEMENT（确定性）</p>
+      <div class="lab-stage">
+        <div id="lab1-tiers"></div>
+        <div class="tier-num">
+          <span>命中 GPU <b id="lab1-gpu">0</b></span>
+          <span>落到内存 <b id="lab1-ram">0</b></span>
+          <span>落到硬盘 <b id="lab1-ssd">0</b></span>
+          <span>就近率 <b id="lab1-avg">0.00</b></span>
+        </div>
+      </div>
+      <div class="lab-ctrl">
+        <button class="lab-btn" id="lab1-play" type="button">跑一个 token</button>
+        <button class="lab-btn" id="lab1-auto" type="button">连跑 8 个</button>
+        <button class="lab-btn" id="lab1-reset" type="button">复位</button>
+      </div>
+      <p class="lab-cap" id="lab1-cap">点击「跑 8 个 token」，看同一个专家每次被选中时，它离 GPU 有多远。</p>
+    </div>
+
+    <div class="note">
+      <p><strong>这个模型（小样 1）是我自己编的，不是 Linger 的实现。</strong>它只用来说明一件事：当"命中率"和"换入代价"同时存在时，缓存策略的差别会被迅速放大。八个专家、三次不同权重的选择，你可以自己点着看哪一次开始变慢。真实的 PolyStrata 远比这复杂，细节在它的仓库里，我没有读它的源码。</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch4">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="8" y="9" width="32" height="30" rx="3" fill="#fffcf4" stroke="#2c4a7c" stroke-width="2.2"/><path d="M8 17h32M16 9v30" stroke="#b8b3a4" stroke-width="1.8"/><path d="M22 24h12M22 30h8" stroke="#a95f16" stroke-width="2.2" stroke-linecap="round"/></svg><span>04</span></div>
+    <div>
+      <p class="chapter-label">WIKI &amp; MEMORY</p>
+      <h2>会自己改写的记忆：一份带校验的 wiki</h2>
+      <p>这一章是我读得最久的一章，因为它和我自己那套文件式记忆系统在做同一件事，但答案不一样。</p>
+      <span class="chapter-stamp">拆解 · 04</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p>Linger 把记忆分成两层：<strong>一个关于你工作的个人 wiki</strong>（所有 agent 都能搜），<strong>每个 agent 对自己对话的记忆</strong>。前者是重点。</p>
+
+    <h3>它的数据结构：一个实体一页</h3>
+    <p>wiki 是一组带类型的 Markdown 页面：客户、联系人、项目、主题各占一页，一个真实世界里的实体一页；每场会议再单独生成一个 Session 页，链接到它涉及的实体。它给的示例图里，Acme 和 Globex 是客户，Dana Lee 和 Sam Park 是联系人，Acme rollout 是项目。</p>
+
+    <div class="table-wrap">
+      <table>
+        <caption>表 1 · 五种页面各自记什么（据 <code>docs/wiki-and-memory.md</code>）</caption>
+        <thead><tr><th>页面</th><th>它记住的东西</th></tr></thead>
+        <tbody>
+          <tr><td>Client 客户</td><td>他们是谁、怎么合作、需求与约束、未完成与已完成事项、过往联系</td></tr>
+          <tr><td>Contact 联系人</td><td>角色、怎么认识的、工作习惯、在意什么、过往联系</td></tr>
+          <tr><td>Project 项目</td><td>当前进展、方向决策、未完成与已完成事项</td></tr>
+          <tr><td>Topic 主题</td><td>概览，以及你当前的理解</td></tr>
+          <tr><td>Session 会议</td><td>一次会：摘要、涉及主题、决策、行动项、你的工作习惯模式</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>真正有意思的是写入这一侧</h3>
+    <p>大部分"AI 记忆"的做法是：把对话丢给模型，让它输出一份更新后的记忆。Linger 没这么干。它的流程是：<strong>模型逐 section 提出修改建议，应用层逐条校验，通过了才落盘。</strong>具体规则我抄在这里，因为这几条规则是整章里我最想偷走的部分：</p>
+
+    <div class="dec-list">
+      <div class="dec"><span class="dn">规则 1</span><span><b>摘要段要么原样保留，要么改写并给出理由。</b>不允许"顺手润色一下"，因为润色过的摘要无法追溯。</span></div>
+      <div class="dec"><span class="dn">规则 2</span><span><b>列表段按条改，每条有应用分配的 ID。</b>本次更新没提到的条目，原样不动。这解决了"重写一遍等于全量覆写"的老问题。</span></div>
+      <div class="dec"><span class="dn">规则 3</span><span><b>事实必须引用来源</b>——来自哪条消息、哪个文件版本。改写时必须保留旧文本引用的全部来源，或者明确说明为什么丢掉某条。</span></div>
+      <div class="dec"><span class="dn">规则 4</span><span><b>变更日志由程序写，不由模型写。</b>每次改写、编辑、撤回、合并，一条带日期的记录。</span></div>
+      <div class="dec"><span class="dn">规则 5</span><span><b>容量是有上限的。</b>摘要段最多 3,000 字符；列表 20 条、每条 500 字符，超出就让模型把最旧的合并成一条带日期的记录。</span></div>
+    </div>
+
+    <p>为什么我觉得这五条比"我们用了 RAG"重要得多？因为记忆系统真正的失败模式不是"记不住"，而是<strong>"记住了一个错的、还引用不出来源的东西"</strong>。上面五条全都在防这一件事：可保留、可定位、可追溯、可回滚、有边界。这套思路和我自己在做的文件式记忆几乎是同一个方向，但它多了一条我没做到的——<strong>变更日志交给程序</strong>。让模型写日志，日志本身就是幻觉的入口。</p>
+
+    <p>至于效果，它给了一个数字：<strong>LoCoMo 长对话记忆基准 95%</strong>，声称高于 Zep 94.7%、Mem0 92.5%、Letta 74%、GPT-4o-mini 全上下文 72.9%。这是它自己引用的对比，我没有复核，也不知道它的评测设置。放在这里是因为这个数字至少说明它知道要跟谁比。</p>
+
+    <div class="fig">
+      <div class="fig-head"><h4>图 3 · 一次夜间更新：建议与落盘之间隔着一道闸</h4><span class="diagram-label">WRITE PATH</span></div>
+      <svg viewBox="0 0 720 190" role="img" aria-label="左侧是原始来源，中间是模型逐条建议，右侧是校验后的 wiki 页面">
+        <g font-family="Consolas,monospace" font-size="10.5">
+          <text x="0" y="16" fill="#6a7168">SOURCE · 一天里进来的东西</text>
+          <rect x="0" y="26" width="150" height="26" rx="3" fill="#eef0f1" stroke="#b8b3a4"/>
+          <text x="8" y="43" fill="#4c5a61">Gmail 邮件</text>
+          <rect x="0" y="58" width="150" height="26" rx="3" fill="#eef0f1" stroke="#b8b3a4"/>
+          <text x="8" y="75" fill="#4c5a61">Slack 对话</text>
+          <rect x="0" y="90" width="150" height="26" rx="3" fill="#eef0f1" stroke="#b8b3a4"/>
+          <text x="8" y="107" fill="#4c5a61">日历 / 会议</text>
+          <rect x="0" y="122" width="150" height="26" rx="3" fill="#eef0f1" stroke="#b8b3a4"/>
+          <text x="8" y="139" fill="#4c5a61">文件 / agent 对话</text>
+
+          <path d="M158 88h40" stroke="#a95f16" stroke-width="2" stroke-dasharray="4 3"/>
+
+          <text x="206" y="16" fill="#6a7168">PROPOSAL · 模型逐段提议</text>
+          <rect x="206" y="26" width="190" height="122" rx="4" fill="#fffdf2" stroke="#dfd9c9" stroke-width="1.4"/>
+          <text x="216" y="46" fill="#8a6a3a">· 摘要段：改写，理由「……」</text>
+          <text x="216" y="68" fill="#8a6a3a">· 列表项 #7：新增一条</text>
+          <text x="216" y="90" fill="#8a6a3a">· 列表项 #3：撤回，来源已失效</text>
+          <text x="216" y="112" fill="#8a6a3a">· 方向：新增一条，引用 msg#4821</text>
+
+          <path d="M404 88h40" stroke="#a95f16" stroke-width="2"/>
+
+          <text x="452" y="16" fill="#6a7168">WIKI · 校验后落盘</text>
+          <rect x="452" y="26" width="200" height="122" rx="4" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="1.6"/>
+          <text x="462" y="46" fill="#2c4a7c">Acme rollout.md</text>
+          <text x="462" y="68" fill="#4c5a61">· 摘要（保留原文 / 附理由）</text>
+          <text x="462" y="90" fill="#4c5a61">· 列表项 #7 已插入</text>
+          <text x="462" y="112" fill="#4c5a61">· 来源：msg#4821 / v12</text>
+          <text x="462" y="134" fill="#a95f16">· Change Log：+1 行（程序写）</text>
+        </g>
+        <g stroke="#2c4a7c" stroke-width="2.2">
+          <path d="M408 78l5 5 10-11" fill="none"/>
+        </g>
+      </svg>
+      <p class="fig-note">这个流程的五条规则出自 <code>docs/wiki-and-memory.md</code>；图中的条目内容是示意，不是它真实页面内容。</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch5">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="25" r="13" fill="#fffcf4" stroke="#2c4a7c" stroke-width="2.2"/><path d="M24 12v3M24 35v3M11 25h3M34 25h3" stroke="#2c4a7c" stroke-width="2" stroke-linecap="round"/><path d="M24 18v8l5 3" stroke="#a95f16" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M36 9l4 4-4 4" stroke="#a95f16" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>05</span></div>
+    <div>
+      <p class="chapter-label">PROACTIVE &amp; DREAMING</p>
+      <h2>凌晨复盘：一个 agent 怎么学会「什么时候闭嘴」</h2>
+      <p>这是全篇我最喜欢的一段设计。它解决的不是"AI 能不能做事"，而是"AI 该不该现在打扰你"。</p>
+      <span class="chapter-stamp">拆解 · 05</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p>它把这个角色叫 <em>Another Me</em>（另一个我）。它盯着你的收件箱、日历和 Slack，跟进该跟进的、推进该推进的，<strong>只在有事需要你的时候才开口</strong>。听着简单，难的是"什么时候算需要你"。</p>
+
+    <h3>第一层：判断，而不是转发</h3>
+    <p>它给的示例时间线很具体：周一 09:12，Dana Lee 说周五前要报价 → 通用规则判定"还早"，于是它设了个周三 09:00 的提醒；周一 10:40，Slack #random 里有人问午饭 → 判定"不是你的事"，沉默；周一 21:30，站会改到 10:00 → 判定"变了"，立刻告诉你；到了 22:00，免打扰时段开始，23:10 收到一封 newsletter → 只记录，不发送，并在聊天记录里标注 22:00–08:00 不发消息。</p>
+
+    <h3>第二层：给自己打分，然后改规则</h3>
+    <p>它管这个叫 <em>Dreaming</em>，每晚跑一次。逻辑是这样的：<strong>Another Me 白天主动发出的每一条消息，同时也是一个测试样本。</strong>夜里 Dreaming 复盘这些消息得到的反应，改写 Another Me 做判断时依据的规则；第二天用新规则判断，当天的反应再喂给下一晚。它明确说了：<strong>不做重新训练，学到的东西是一份简短的规则清单。</strong></p>
+
+    <div class="dual">
+      <div>
+        <h4>隐式强化：推两次，就成规则</h4>
+        <ul>
+          <li>10/28 你收到提醒「AWS 发票今天到期」，你回：这东西上周就到了，我想早点知道</li>
+          <li>11/04 又提醒了一次 Figma 的发票，你的反应类似</li>
+          <li>当晚 Dreaming 把两条同类的线索合成一条：<b>供应商发票 → 立刻告诉我</b></li>
+        </ul>
+      </div>
+      <div>
+        <h4>直接说：一次就够</h4>
+        <ul>
+          <li>你回：「等，他们周一就回了？客户回复要立刻告诉我」</li>
+          <li>Dreaming 读出类别（客户回复）和决策（立刻），不需要第二次</li>
+          <li>你回：「这个点别说了，这类事可以等到我列表里」</li>
+          <li>它读出类别（会议变更）+ 时间窗（21:00 后）+ 决策（延后）</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>为什么这套设计我认为值得记一笔？因为它把"主动性"从一句产品口号，拆成了一个<strong>有输入、有输出、有反馈回路、而且可解释</strong>的机制。大多数 agent 的主动性是"if 某条件 then 通知"，写死在代码里；它的主动性是"规则被观察到的事实改写"，规则还能被人看、被人改。差别在于：前者上线那天就停止成长，后者会跟着你的习惯走形。</p>
+
+    <div class="note">
+      <p><strong>同时要说清楚它的风险，它自己也绕不开：</strong>这套机制依赖"你的反应"作为信号，而人的反应是被语境污染的。你当天心情不好回了一句"别烦我"，第二天它就学成"这类事别说"。规则清单越短越可控，但也越容易把一次性的情绪学成永久的偏好。我在自己的系统里踩过同类的坑，所以这一章读得格外仔细——<strong>它解决的是"怎么学"，没解决"学错了怎么撤"</strong>，文档里我没找到规则级别的回滚说明。</p>
+    </div>
+
+    <div class="lab">
+      <p class="lab-tag">小样 2 · NIGHTLY REVIEW（确定性 · 简化模型）</p>
+      <div class="lab-stage">
+        <div id="lab2-feed"></div>
+        <div id="lab2-signals-log" class="lab2-log"></div>
+        <div class="tier-num" style="border-top:1px dashed #33455a">
+          <span>白天信号 <b id="lab2-signals">0</b></span>
+          <span>当前规则 <b id="lab2-rules">1</b></span>
+          <span>今晚该不该开口 <b id="lab2-verdict">—</b></span>
+        </div>
+      </div>
+      <div class="lab-ctrl">
+        <button class="lab-btn" id="lab2-add" type="button">投入今天的一条信号</button>
+        <button class="lab-btn" id="lab2-night" type="button">跑一次 Dreaming</button>
+        <button class="lab-btn" id="lab2-reset" type="button">复位</button>
+      </div>
+      <p class="lab-cap" id="lab2-cap">规则：同类别攒够 2 个同方向信号，就升级成一条规则。</p>
+    </div>
+
+    <p class="note" style="margin-top:22px"><strong>小样 2 同样是我为了讲清机制而写的简化模型，不是 Linger 的实现。</strong>真实的 Dreaming 用模型读反馈、归纳线索、写规则，比"计数到二"复杂得多；我这里保留的只有那个骨架：同类信号累积 → 成规则 → 新信号按规则判。要玩真的，去读它的 <code>docs/proactive.md</code>。</p>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch6">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="6" y="8" width="36" height="22" rx="3" fill="#fffcf4" stroke="#2c4a7c" stroke-width="2.2"/><path d="M12 36h24" stroke="#b8b3a4" stroke-width="2"/><path d="M24 30v6" stroke="#b8b3a4" stroke-width="2"/><path d="M12 15h13M12 21h8" stroke="#a95f16" stroke-width="2.2" stroke-linecap="round"/><rect x="30" y="14" width="6" height="8" rx="1.4" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="1.6"/></svg><span>06</span></div>
+    <div>
+      <p class="chapter-label">SHELL &amp; CAGE</p>
+      <h2>壳与笼子：一个单端口、155 条命令、所有动作过闸</h2>
+      <p>前面几章讲的都是"它能做什么"。这一章讲它怎么被管住——我认为这是整台机器里最不显眼、但最能看出工程成熟度的一章。</p>
+      <span class="chapter-stamp">拆解 · 06</span>
+    </div>
+  </div>
+  <div class="reading">
+    <h3>本机不监听任何端口</h3>
+    <p><code>docs/architecture.md</code> 里画了一张很清楚的图：桌面上的 <em>Computer Daemon</em> 向外拨<strong>一个 WebSocket</strong>，把消息和文件从服务端取回来，模型调用也走这个通道。文档原话是：本机没有任何东西在网络上监听，本地辅助进程只用 127.0.0.1 或仅属主的 socket。</p>
+    <p>这个选择的意义在于：一个跑在你电脑上的 agent，最理想的网络姿态是<strong>"只出不进"</strong>。不需要你配置端口转发、不需要在路由器上开洞、也不需要向别人解释"为什么我电脑上有个服务在跑"。事件先落 SQLite 再发送，断线重连后重放——这是把"网络不可靠"当成默认前提来设计的。</p>
+
+    <h3>155 条命令，替代一堆 MCP</h3>
+    <p>它做了 <code>teamhub</code> 这个 CLI：TeamHub 自身 56 条（消息、文档、任务、例行、房间、agent、知识、应用、追踪项、档案），加上 99 条 connector（Gmail、Outlook、Teams、Slack、日历、Notion、Drive、OneDrive、Figma、GitLab、表格……）。设计意图是：一个 agent 不需要加载几十个 MCP server，只要认识这一个命令行的 155 个子命令。</p>
+    <p>几个我认为做对了的细节：</p>
+    <ul>
+      <li><strong>帮助、schema、权限清单从同一份定义生成。</strong>不会出现"文档说支持、实际不认"的偏差。</li>
+      <li><strong>每个 agent 一个 token，48 小时到期，通过 Daemon 那条链路续签。</strong>权限是每次调用时由服务端核对身份、成员资格和能力。</li>
+      <li><strong>写操作带 operation ID。</strong>重试返回已存结果；结果未知的报"未知"，而不是重发一次——这是防重复发消息的关键。</li>
+      <li><strong>文件上传下载 SHA-256 校验，下载不覆盖本地已有文件。</strong></li>
+      <li><strong>没有 run 也能用。</strong>外部 agent 带着自己的 token 也能调。</li>
+    </ul>
+
+    <h3>所有动作过一道闸</h3>
+    <p>桌面操控这块，它用 Cua（macOS / Windows）读窗口元素、点击输入拖拽，用 Playwright 开浏览器（每个 agent 独立 profile，或者直接用你已登录的 Chrome），Shell 跑 agent 自己的命令工具。三者的上游都是同一个东西：<strong>Guardrail</strong>——先做规则检查，再做一次 LLM 复核，然后才落地执行。</p>
+
+    <div class="fig">
+      <div class="fig-head"><h4>图 4 · 一条动作从被想到到被执行的路径</h4><span class="diagram-label">ACTION PATH</span></div>
+      <svg viewBox="0 0 720 150" role="img" aria-label="agent 的动作先经 Guardrail 的规则检查与模型复核，再到 Cua、Playwright、Shell 执行">
+        <g font-family="Consolas,monospace" font-size="10.5">
+          <rect x="0" y="52" width="96" height="44" rx="4" fill="#eef0f1" stroke="#b8b3a4"/>
+          <text x="10" y="70" fill="#4c5a61">agent</text>
+          <text x="10" y="86" fill="#8a959c">想点一下</text>
+
+          <path d="M100 74h34" stroke="#b8b3a4" stroke-width="1.8" stroke-dasharray="4 3"/>
+
+          <rect x="138" y="20" width="150" height="108" rx="4" fill="#e4ebf2" stroke="#2c4a7c" stroke-width="1.8"/>
+          <text x="150" y="42" fill="#2c4a7c">Guardrail</text>
+          <rect x="150" y="52" width="126" height="26" rx="3" fill="#fffcf4" stroke="#b8b3a4"/>
+          <text x="158" y="69" fill="#4c5a61">规则检查</text>
+          <rect x="150" y="84" width="126" height="26" rx="3" fill="#fffcf4" stroke="#b8b3a4"/>
+          <text x="158" y="101" fill="#4c5a61">LLM 复核</text>
+
+          <path d="M292 74h34" stroke="#b8b3a4" stroke-width="1.8" stroke-dasharray="4 3"/>
+
+          <rect x="330" y="18" width="120" height="30" rx="4" fill="#f6e6d2" stroke="#a95f16" stroke-width="1.6"/>
+          <text x="340" y="37" fill="#a95f16">Cua · 桌面</text>
+          <rect x="330" y="54" width="120" height="30" rx="4" fill="#f6e6d2" stroke="#a95f16" stroke-width="1.6"/>
+          <text x="340" y="73" fill="#a95f16">Playwright</text>
+          <rect x="330" y="90" width="120" height="30" rx="4" fill="#f6e6d2" stroke="#a95f16" stroke-width="1.6"/>
+          <text x="340" y="109" fill="#a95f16">Shell</text>
+
+          <path d="M454 74h34" stroke="#b8b3a4" stroke-width="1.8" stroke-dasharray="4 3"/>
+
+          <rect x="492" y="52" width="150" height="44" rx="4" fill="#fffcf4" stroke="#b8b3a4"/>
+          <text x="502" y="70" fill="#4c5a61">你的机器上</text>
+          <text x="502" y="86" fill="#8a959c">真的发生了</text>
+          <text x="0" y="146" fill="#9aa0a6">文档：Linux 上 AT-SPI / xdotool 替代 Cua，只使用 agent 自己的 Chrome profile</text>
+        </g>
+      </svg>
+      <p class="fig-note">规则先于模型、模型先于执行——这个顺序值得注意：它不是"让模型决定一切"，而是"便宜的规则先拦一道，模型只看剩下的"。</p>
+    </div>
+
+    <p>再补两个我认为很聪明的设计：</p>
+    <ul>
+      <li><strong>一条输入通道。</strong>屏幕只有一个输入车道，每个 agent 的浏览器各有自己的车道，两个 agent 不会抢同一个屏幕；桌面输入如果需要前台窗口，会等在飞的浏览器调用结束。</li>
+      <li><strong>每次输入先记日志再执行。</strong>结果不确定时，这条车道被阻塞，且这次输入永不重放。这是把"误点一次"的代价压到最低的做法。</li>
+    </ul>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch7">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="M10 34V16" stroke="#b8b3a4" stroke-width="2"/><path d="M38 34V16" stroke="#b8b3a4" stroke-width="2"/><circle cx="10" cy="34" r="4" fill="#2c4a7c"/><circle cx="38" cy="34" r="4" fill="#a95f16"/><path d="M14 34h20" stroke="#dfd9c9" stroke-width="2" stroke-dasharray="3 3"/><text x="24" y="12" font-family="Consolas,monospace" font-size="10" fill="#6a7168" text-anchor="middle">¥0</text></svg><span>07</span></div>
+    <div>
+      <p class="chapter-label">THE BILL</p>
+      <h2>零 token 是真的，零成本不是</h2>
+      <p>这一章我原本不想写，但它是"本地优先"叙事里最容易被含糊过去的地方，所以必须写清楚。</p>
+      <span class="chapter-stamp">拆解 · 07</span>
+    </div>
+  </div>
+  <div class="reading">
+    <p>先说它确实做到的部分：<strong>本地模型路径上，推理不花钱。</strong>文档里写得很明白，聊天、审批、后台的 wiki 与记忆调用，走的都是你机器上那个模型，没有云账单、没有 token 费。这一点是真的，也是它最主要的卖点。</p>
+    <p>但同一个文档里还写着这些：</p>
+
+    <div class="table-wrap">
+      <table>
+        <caption>表 2 · 哪些环节仍然在网外（据 <code>docs/local-inference.md</code>、<code>docs/architecture.md</code>）</caption>
+        <thead><tr><th>环节</th><th>用的是什么</th><th>代价</th></tr></thead>
+        <tbody>
+          <tr><td>网页搜索</td><td>服务端配置的 Tavily / Brave / Firecrawl / Exa / You.com</td><td>要 key；没有 key 时降级到 DuckDuckGo（免费但会限流）或 You.com（无 key 但质量更低）</td></tr>
+          <tr><td>语音转写</td><td>LiveKit 传输 + Soniox 流式 ASR</td><td>需要服务端配置；文档没有说这部分能完全本地化</td></tr>
+          <tr><td>应用连接</td><td>Composio 托管各家的 app key</td><td>写操作需审批；密钥在第三方</td></tr>
+          <tr><td>BYOK / 订阅</td><td>你自己的 OpenAI 兼容端点，或 Claude Code / Codex 的订阅</td><td>按你原本的账单走；key 只存本机 owner-only 文件，服务端不存</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>所以准确的说法是：<strong>它消除的是"模型推理的 token 费"，不是"所有外部依赖"。</strong>这两个差别听起来小，但对一个想"彻底离线"的用户来说很关键——如果你要的是断网可用，那网页搜索、语音、连接应用这三块都得另想办法。</p>
+
+    <p>还有一项成本它不说，但躲不掉：<strong>硬件。</strong>它自己给的门槛是 12GB 显存 + 64GB 内存。它推荐的档位里，Mac 24GB 装的是 27B 的 IQ3_S 量化，12GB 卡上首 token 要等大约 3 分钟。零 token 费换来的是"你的机器在替你付电费和时间"。这笔账值不值，取决于你拿它干什么。</p>
+
+    <div class="lab" style="max-width:780px">
+      <p class="lab-tag">小样 3 · WHERE THE BYTES GO（示意 · 非实测）</p>
+      <div class="lab-stage">
+        <div id="lab3-chain"></div>
+        <div class="chain-legend">
+          <span><b style="background:#7fae8e"></b>本机内闭环</span>
+          <span><b style="background:#7f9bbd"></b>需配置或需联网</span>
+          <span><b style="background:#c9944a"></b>出机器（第三方）</span>
+        </div>
+      </div>
+      <div class="lab-ctrl">
+        <button class="lab-btn on" id="lab3-local" type="button">只用本地模型</button>
+        <button class="lab-btn" id="lab3-full" type="button">开全部外设</button>
+      </div>
+      <p class="lab-cap" id="lab3-cap">宽度只是示意比例，不是字节数。</p>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="wrap">
+<section class="chapter" id="ch8">
+  <div class="chapter-head">
+    <div class="chapter-no"><svg class="ch-ic" viewBox="0 0 48 48" fill="none" aria-hidden="true"><rect x="9" y="8" width="30" height="32" rx="3" fill="#fffcf4" stroke="#2c4a7c" stroke-width="2.2"/><path d="M15 17h18M15 24h18M15 31h11" stroke="#b8b3a4" stroke-width="2"/><path d="M15 17h8" stroke="#a95f16" stroke-width="2.6" stroke-linecap="round"/></svg><span>08</span></div>
+    <div>
+      <p class="chapter-label">TAKEAWAYS</p>
+      <h2>如果是你来做，会先偷哪五条</h2>
+      <p>拆别人机器的终点不是评价，是拿走能用的东西。下面五条是我读完九篇文档之后，真的想搬到自己系统里的。</p>
+      <span class="chapter-stamp">拆解 · 08</span>
+    </div>
+  </div>
+  <div class="reading">
+    <div class="dec-list">
+      <div class="dec"><span class="dn">01</span><span><b>让"更新"变成"提议 + 校验"，而不是"重写"。</b>模型只输出差异和理由，应用层逐条检查，日志由程序写。这一条可以直接搬进任何有长期状态的系统。</span></div>
+      <div class="dec"><span class="dn">02</span><span><b>本机只出不进。</b>一个拨出去的 WebSocket 就能解决端口、防火墙、"我电脑上为什么有服务"这三个问题；事件先落盘再发送，断线重放。</span></div>
+      <div class="dec"><span class="dn">03</span><span><b>把工具收敛成一个命令行，并让帮助与权限同源。</b>155 条命令听起来笨，但比 155 个 MCP server 可控得多；权限清单由代码生成，才不会文档与实现脱节。</span></div>
+      <div class="dec"><span class="dn">04</span><span><b>所有动作过同一道闸，且规则先于模型。</b>便宜的规则先拦一层，贵的判断只看剩下的部分；每次输入先记日志再执行，不确定就不重放。</span></div>
+      <div class="dec"><span class="dn">05</span><span><b>把主动性做成有反馈回路的机制，并且把规则摊开给人看。</b>规则可以被观察、被修改、被追溯——这一点比"我们很主动"重要得多。</span></div>
+    </div>
+
+    <h3>也说三点保留</h3>
+    <p><strong>第一，许可证不是标准开源。</strong>它是"基于 Apache 2.0 加了附加条件"的 Linger Open Source License：禁止拿它做托管服务对外提供；前端 LOGO 和版权信息不得移除修改；并且贡献者同意版权方"可以按需调整开源协议"。商用自用可以，做 SaaS 不行。如果你的方案是"部署一套给别人用"，这条得先看清楚。</p>
+    <p><strong>第二，"零 token 费"有边界。</strong>搜索、语音、应用连接这三块仍要外部服务或配置，硬件门槛也实打实。本地优先不等于断网可用。</p>
+    <p><strong>第三，它还很新。</strong>四千星、380 fork、九个 release、141 个开放 issue——这是高速迭代的样子，也是"接口会变"的样子。我读的是 11 月 23 日的 main 分支，一个月后可能就不是这个样子了。</p>
+
+    <div class="note">
+      <p>最后补一句关于我自己这篇的位置：我在这个系列里写过很多次"我的沙箱""我的记忆""我的驾驶舱"，每次都在解决同一类问题——<strong>一个能力不受控的东西，怎么放到可信的边界里。</strong>Linger 给出的答案是：把边界做在文件上（wiki 页面 + 变更日志）、做在网络姿态上（只出不进）、做在动作路径上（一道闸）、也做在规则上（Dreaming 的规则清单）。四个层面都做了，这可能是它二十天能涨四千星的原因之一。</p>
+    </div>
+  </div>
+
+  <div class="ending">
+    <h2>结语：把不可能拆成一道排序题</h2>
+    <div class="reading">
+      <p>回到开头那个矛盾：39 GB 的模型，怎么跑在 12 GB 的卡上？Linger 的答案是——不跑整个模型，只跑当前这个 token 需要的那几个专家，其余的按热度分层放远一点。</p>
+      <p>我一直觉得这个动作比它的技术细节更重要。它把一个看起来非黑即白的问题（装得下 / 装不下），变成了一个连续的排序问题（谁更热、谁放得近、换回来要多久）。<strong>工程上真正值钱的往往不是"做到了不可能的事"，而是"把不可能改写成了一个可以计算的取舍"。</strong></p>
+      <p>这一点放在哪一行都成立。显存不够可以排序；上下文不够也可以排序；工具太多可以排序；连"什么时候该打扰用户"，它都做成了一张可以重写的规则清单——那也是一种排序：这件事，现在，值不值得占你一秒。</p>
+    </div>
+
+    <div class="quickcard">
+      <p class="diagram-label">速查卡 · QUICK REFERENCE</p>
+      <ul>
+        <li>Linger = 本机跑 agent + 本机跑 125B MoE，零推理 token 费</li>
+        <li>PolyStrata：热专家留 GPU，温的进内存，冷的落 SSD，按需换入换出</li>
+        <li>规划器五层筛：平台 → 空闲内存 → 装得下 128K KV → 质量 → 塞小模型；装完要答对一题才算装好</li>
+        <li>记忆 = 每实体一页的 wiki + 逐 section 提议 + 五条写入规则 + 程序写变更日志</li>
+        <li>主动性 = Another Me 判断该不该说 + Dreaming 每晚复盘、改写规则、不重新训练</li>
+        <li>本机不监听端口；一个 WebSocket；155 条 CLI 命令；所有动作过 Guardrail</li>
+        <li>零 token ≠ 零成本：搜索、语音、连接器仍要外部服务；硬件门槛 12GB + 64GB</li>
+        <li>许可证：Apache 2.0 + 附加条件，禁做托管服务、禁改前端 LOGO</li>
+      </ul>
+    </div>
+
+    <p class="source-note">
+      <strong>资料来源：</strong>simplexai-labs/linger 的 README、docs/（architecture、local-inference、wiki-and-memory、proactive 等九篇）、LICENSE、以及 2026-11-23 的 release note；star 数、fork 数、issue 数与目录结构取自 2026-11-23 的 GitHub API。文中所有产品数字均为该项目自述，我没有复现验证；标注"模拟测试"的档位我保留了原限定词。三枚小样为本文自编的机制模型，用于说明设计思想，不代表该项目实现。作者身份（是否为"前 DeepSeek-VL 项目负责人"）我在公开渠道未能核实，因此文中不涉及。仓库内 <code>verify.mjs</code>（playwright-core + 本机 Chrome）跑 27 条行为断言，含 390px 溢出扫描与零 JS 错误检查；文中数据与结论的复核请一并看该脚本与上文标注。
+    </p>
+  </div>
+</section>
+</div>
+
+<nav class="wrap series-nav" aria-label="系列导航">
+  <a href="https://starrysea1412.github.io/agent-borrowed-states/">← VOL.22 借来的状态机</a>
+  <a class="hub" href="https://starrysea1412.github.io/makers-notebook/">☰ 全系列目录</a>
+  <a href="https://starrysea1412.github.io/makers-notebook/">VOL.23 完 · 返回目录 →</a>
+</nav>
+
+<footer class="wrap site-foot">
+  <div class="foot-meta">STARRYSEA · 造物手记 VOL.23 · 别人家的造物：Linger<br/>证据来自公开仓库；三枚小样为机制示意，参数由你改，逻辑摊在明面上。</div>
+</footer>
+
+<script>
+(function(){
+  var progress=document.getElementById("progress");
+  function onScroll(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    progress.style.transform="scaleX("+(max>0?(h.scrollTop||0)/max:0)+")";
+  }
+  addEventListener("scroll",onScroll,{passive:true});onScroll();
+
+
+  var artBtn=document.querySelector(".art-button");
+  if(artBtn) artBtn.addEventListener("click",function(){
+    var svg=artBtn.querySelector("svg");
+    var w=window.open("","_blank");
+    if(!w) return;
+    var doc=w.document;
+    doc.title="Linger · 图 0 放大";
+    var st=doc.createElement("style");
+    st.textContent="body{margin:0;background:#f7f4ec;display:flex;align-items:center;justify-content:center;min-height:100vh}svg{width:min(92vw,760px);height:auto}";
+    doc.head.appendChild(st);
+    var clone=svg.cloneNode(true);
+    clone.removeAttribute("aria-hidden");
+    doc.body.appendChild(clone);
+  });
+})();
+
+/* ============ 小样 1 · 专家分层放置（确定性） ============ */
+(function(){
+  var tiers=[
+    {name:"GPU · 12 GB",cls:"gpu",note:"常驻 · 最热",cap:"gpu"},
+    {name:"RAM · 64 GB",cls:"ram",note:"温 · 被选中就升上来",cap:"ram"},
+    {name:"SSD",cls:"ssd",note:"冷 · 按需读入内存",cap:"ssd"}
+  ];
+  var experts=[
+    {id:"E1",heat:0.42},{id:"E2",heat:0.31},{id:"E3",heat:0.18},
+    {id:"E4",heat:0.12},{id:"E5",heat:0.07},{id:"E6",heat:0.04},
+    {id:"E7",heat:0.02},{id:"E8",heat:0.01}
+  ];
+  // 8 个 token，每个 token 激活 2 个专家；按固定种子决定取哪两个（确定性）
+  var seq=[[0,1],[0,2],[1,3],[0,1],[4,5],[0,2],[6,7],[1,3]];
+  var counts={};
+  var host={}; // 每个专家当前在哪一层：0=GPU,1=RAM,2=SSD
+  var gpuCap=3; // GPU 能放几个专家（示意）
+  var i;
+  for(i=0;i<experts.length;i++){ host[experts[i].id]= (i<gpuCap?0:(i<gpuCap+3?1:2)); }
+
+  var root=document.getElementById("lab1-tiers");
+  var cap=document.getElementById("lab1-cap");
+  var elGpu=document.getElementById("lab1-gpu");
+  var elRam=document.getElementById("lab1-ram");
+  var elSsd=document.getElementById("lab1-ssd");
+  var elAvg=document.getElementById("lab1-avg");
+  if(!root) return;
+
+  function render(){
+    root.innerHTML="";
+    var idxHost={0:[],1:[],2:[]};
+    experts.forEach(function(e){ idxHost[host[e.id]].push(e); });
+    tiers.forEach(function(t,ti){
+      var list=idxHost[ti];
+      var div=document.createElement("div");
+      div.className="tier tier-card";
+      var names=list.map(function(e){return e.id;}).join(" · ")||"—";
+      div.innerHTML='<span class="tier-name">'+t.name+'</span>'+
+        '<span class="tier-body">'+names+' <i>· '+t.note+'</i></span>'+
+        '<span class="tier-hot">'+list.length+' 个</span>';
+      root.appendChild(div);
+    });
+    // 读数始终反映当前分布
+    elGpu.textContent=idxHost[0].length;
+    elRam.textContent=idxHost[1].length;
+    elSsd.textContent=idxHost[2].length;
+    if(totalSlots>0) elAvg.textContent=(totalSlotsGpu/totalSlots).toFixed(2);
+  }
+
+  function reset(){
+    for(var i=0;i<experts.length;i++){ host[experts[i].id]=(i<gpuCap?0:(i<gpuCap+3?1:2)); }
+    counts={}; totalSlots=0; totalSlotsGpu=0; step=0;
+    elAvg.textContent="0.00";
+    cap.textContent="点击「跑一个 token」，看同一个专家每次被选中时，它离 GPU 有多远。";
+    render();
+  }
+
+  var step=0;
+  var totalSlots=0, totalSlotsGpu=0;
+  function oneToken(){
+    var tok=seq[step];
+    var moved=[];
+    tok.forEach(function(ei){
+      var e=experts[ei];
+      counts[e.id]=(counts[e.id]||0)+1;
+      totalSlots++;
+      if(host[e.id]===0){ totalSlotsGpu++; return; }   // 已在 GPU，直接算
+      moved.push(e);                                    // 不在 GPU，先记下来
+    });
+    // 先把这一步要用的专家全部放进 GPU，再统一按"用得最少"淘汰
+    moved.forEach(function(e){ host[e.id]=0; });
+    while(true){
+      var onGpu=experts.filter(function(x){return host[x.id]===0;});
+      if(onGpu.length<=gpuCap) break;
+      onGpu.sort(function(a,b){ return (counts[a.id]||0)-(counts[b.id]||0); });
+      var victim=null;
+      for(var i=0;i<onGpu.length;i++){
+        if(moved.indexOf(onGpu[i])===-1){ victim=onGpu[i]; break; }
+      }
+      if(!victim) break;                                // 全是这一步要用的，宁可超一点
+      host[victim.id]=1;                                // 挤到内存
+    }
+    step++;
+    var last=tok.map(function(i){return experts[i].id;}).join(" + ");
+    cap.innerHTML = step>seq.length
+      ? "已跑完 <b>"+seq.length+"</b> 个 token（本轮序列到此为止），再点一次从头开始"
+      : "第 <b>"+step+"</b> / "+seq.length+" 个 token · 本次用到 "+last+" · GPU 现有 "+
+        experts.filter(function(e){return host[e.id]===0;}).length+" 个专家";
+    render();
+    return true;
+  }
+  document.getElementById("lab1-play").addEventListener("click",function(){ if(step>=seq.length){ reset(); return; } oneToken(); });
+  document.getElementById("lab1-auto").addEventListener("click",function(){
+    for(var i=0;i<seq.length;i++){ if(step>=seq.length) break; oneToken(); }
+  });
+  document.getElementById("lab1-reset").addEventListener("click",reset);
+  reset();
+})();
+
+/* ============ 小样 2 · 夜间复盘（确定性 · 简化） ============ */
+(function(){
+  var feed=document.getElementById("lab2-feed");
+  if(!feed) return;
+  var elSignals=document.getElementById("lab2-signals");
+  var elRules=document.getElementById("lab2-rules");
+  var elVerdict=document.getElementById("lab2-verdict");
+  var cap=document.getElementById("lab2-cap");
+
+  // 三类信号，每类两个方向：想早 / 不用管
+  var kinds=[
+    {key:"vendor",label:"供应商发票",up:"早点说",down:"别说"},
+    {key:"delivery",label:"快递",up:"早点说",down:"别说"},
+    {key:"client",label:"客户回复",up:"立刻说",down:"别说"}
+  ];
+  var pending={}; // key -> {up:n, down:n}
+  var rules={};   // key -> 'up' | 'down'
+  var totalSignals=0;
+  var nextKind=0;
+  var script=[
+    {kind:"vendor",dir:"up",text:"供应商发票今天到期 —— 你回：这东西上周就到了，我想早点知道"},
+    {kind:"vendor",dir:"up",text:"又一张发票快到期 —— 你的反应类似"},
+    {kind:"vendor",dir:"down",text:"快递已发出 —— 你回：这个不用告诉我"},
+    {kind:"delivery",dir:"down",text:"包裹明天到 —— 你没搭理"},
+    {kind:"delivery",dir:"down",text:"另一个包裹在派送 —— 你打了个哈欠"},
+    {kind:"client",dir:"up",text:"客户周一就回了 —— 你回：客户回复要立刻告诉我"},
+    {kind:"client",dir:"up",text:"客户又回了一封 —— 你回：这类要马上说"}
+  ];
+  var feedEl=document.getElementById("lab2-signals-log");
+  function ensure(k){ if(!pending[k]) pending[k]={up:0,down:0}; }
+  function render(){
+    feed.innerHTML="";
+    kinds.forEach(function(k){
+      var row=document.createElement("div");
+      row.className="tier-card";
+      var p=pending[k.key]||{up:0,down:0};
+      var r=rules[k.key];
+      var verdict = r ? (r==="up"?"按规则：现在说":"按规则：不说") : (p.up>=2?"够 2 个，今晚升级":(p.down>=2?"够 2 个，今晚升级":"观察中"));
+      row.innerHTML='<span class="tier-name">'+k.label+'</span>'+
+        '<span class="tier-body">想早 '+p.up+' · 不用管 '+p.down+'</span>'+
+        '<span class="tier-hot">'+verdict+'</span>';
+      if(r) row.classList.add("hit");
+      feed.appendChild(row);
+    });
+    if(feedEl){
+      feedEl.innerHTML = script.slice(0,nextKind).slice(-3).map(function(s){
+        return '<div class="logline">'+s.text+'</div>';
+      }).join("") || '<div class="logline dim">还没有信号。点上面的按钮，投入今天的第一条。</div>';
+    }
+    elSignals.textContent=totalSignals;
+    elRules.textContent=Object.keys(rules).length===0 ? "1（初始：沉默优先）" : String(Object.keys(rules).length+1);
+    elVerdict.textContent=hasAnyRule()?"按新规则":"按旧规则";
+    cap.innerHTML = hasAnyRule()
+      ? "规则已改写：<b>"+Object.keys(rules).map(function(k){return labelOf(k)+" → "+(rules[k]==="up"?"现在说":"不说");}).join("；")+"</b>"
+      : "同类别攒够 2 个同方向信号，就升级成一条规则。";
+  }
+  function hasAnyRule(){ return Object.keys(rules).length>0; }
+  function labelOf(k){ for(var i=0;i<kinds.length;i++){ if(kinds[i].key===k) return kinds[i].label; } return k; }
+
+  document.getElementById("lab2-add").addEventListener("click",function(){
+    if(nextKind>=script.length){ nextKind=0; pending={}; rules={}; totalSignals=0; }
+    var s=script[nextKind];
+    ensure(s.kind);
+    pending[s.kind][s.dir]++;
+    totalSignals++;
+    nextKind++;
+    render();
+  });
+
+  document.getElementById("lab2-night").addEventListener("click",function(){
+    Object.keys(pending).forEach(function(k){
+      var p=pending[k];
+      if(!rules[k]){
+        if(p.up>=2){ rules[k]="up"; }
+        else if(p.down>=2){ rules[k]="down"; }
+      }
+      // 已成规则的，继续累计也无妨
+    });
+    render();
+  });
+
+  document.getElementById("lab2-reset").addEventListener("click",function(){
+    pending={}; rules={}; totalSignals=0; nextKind=0; render();
+  });
+
+  render();
+})();
+
+/* ============ 小样 3 · 依赖流向（示意） ============ */
+(function(){
+  var root=document.getElementById("lab3-chain");
+  if(!root) return;
+  var rows=[
+    {label:"模型推理",w:92,kind:"local",note:"你的机器"},
+    {label:"记忆 / wiki 落盘",w:76,kind:"local",note:"你的磁盘"},
+    {label:"网页搜索",w:54,kind:"config",note:"Tavily / DDG"},
+    {label:"语音转写",w:38,kind:"config",note:"LiveKit / Soniox"},
+    {label:"应用连接（Gmail 等）",w:30,kind:"foreign",note:"Composio 托管 key"},
+    {label:"BYOK / 订阅模型",w:20,kind:"foreign",note:"你的账单"}
+  ];
+  var mode="local";
+  function render(){
+    root.innerHTML="";
+    var chain=document.createElement("div");
+    chain.className="chain";
+    rows.forEach(function(r){
+      var dim = (mode==="local" && r.kind!=="local");
+      var row=document.createElement("div");
+      row.className="chain-row "+(r.kind==="local"?"local":(r.kind==="foreign"?"foreign":""));
+      row.style.opacity=dim?".32":"1";
+      row.innerHTML='<span class="cl">'+r.label+'</span>'+
+        '<span class="cbar"><i style="width:'+r.w+'%"></i></span>'+
+        '<span class="cnum">'+r.note+'</span>';
+      chain.appendChild(row);
+    });
+    root.appendChild(chain);
+    document.getElementById("lab3-cap").textContent = mode==="local"
+      ? "只走本机：模型和记忆都在你的机器上，外面几行是灰的——但也就意味着搜索、语音、应用连接都不可用。"
+      : "全开：推理仍然本机，但搜索、语音、连接器都通到外面，其中连接器还需要托管在第三方。";
+  }
+  document.getElementById("lab3-local").addEventListener("click",function(){
+    mode="local";
+    this.classList.add("on");
+    document.getElementById("lab3-full").classList.remove("on");
+    render();
+  });
+  document.getElementById("lab3-full").addEventListener("click",function(){
+    mode="full";
+    this.classList.add("on");
+    document.getElementById("lab3-local").classList.remove("on");
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
